@@ -1,0 +1,16 @@
+from PySide6.QtCore import QObject, Signal
+
+class DeviceEventBridge(QObject):
+    """
+    Puente de señales (Signals & Slots) para comunicar el hilo en 
+    segundo plano de pyudev con el hilo principal de la GUI (PySide6).
+    Evita crasheos por actualización de interfaz desde otro thread.
+    """
+    # Emite: devpath, plugin_instance
+    device_added = Signal(str, object)
+    
+    # Emite: devpath, plugin_instance
+    device_removed = Signal(str, object)
+    
+    # Emite: mensaje de texto
+    log_message = Signal(str)
