@@ -13,25 +13,89 @@ class MainWindow(QMainWindow):
     def __init__(self, bridge: DeviceEventBridge):
         super().__init__()
         self.bridge = bridge
-        self.setWindowTitle("OpenUnlock-Linux (Premium UI)")
+        self.setWindowTitle("OpenUnlock-Linux (Dark Blue Edition)")
         self.resize(1100, 750)
         self.active_plugin = None
         
-        # Diseño Estético Premium (Estilo SamFw / Herramientas Profesionales)
+        # Tema Oscuro Premium con tonalidades Azules (Midnight Blue)
         self.setStyleSheet("""
-            QMainWindow { background-color: #f3f3f3; }
-            QLabel { color: #333333; font-weight: bold; font-family: 'Segoe UI', sans-serif;}
-            QGroupBox { font-weight: bold; border: 1px solid #cccccc; border-radius: 5px; margin-top: 10px; padding-top: 15px;}
-            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; color: #005A9E;}
-            QListWidget { background-color: #ffffff; color: #333; border: 1px solid #ccc; border-radius: 5px; font-size: 14px;}
-            QListWidget::item:selected { background-color: #cce8ff; color: #000;}
-            QPlainTextEdit { background-color: #1e1e1e; color: #4af626; font-family: 'Consolas', 'Monospace'; border: none; border-radius: 5px; padding: 10px;}
-            QPushButton { background-color: #0078D7; color: white; border: none; padding: 12px; border-radius: 4px; font-weight: bold; font-size: 13px;}
-            QPushButton:hover { background-color: #005A9E; }
-            QPushButton:disabled { background-color: #cccccc; color: #888888; }
-            QTabWidget::pane { border: 1px solid #cccccc; background: #ffffff; border-radius: 4px;}
-            QTabBar::tab { background: #e1e1e1; color: #333; padding: 10px 20px; font-weight: bold; border-top-left-radius: 4px; border-top-right-radius: 4px;}
-            QTabBar::tab:selected { background: #ffffff; color: #0078D7; border-bottom: 2px solid #0078D7;}
+            QMainWindow { background-color: #0F172A; }
+            QLabel { color: #E2E8F0; font-weight: bold; font-family: 'Segoe UI', 'Inter', sans-serif;}
+            
+            QGroupBox { 
+                font-weight: bold; 
+                border: 1px solid #1E293B; 
+                border-radius: 6px; 
+                margin-top: 15px; 
+                padding-top: 15px;
+                background-color: #111827;
+            }
+            QGroupBox::title { 
+                subcontrol-origin: margin; 
+                left: 10px; 
+                padding: 0 5px; 
+                color: #3B82F6;
+                background-color: #0F172A;
+            }
+            
+            QListWidget { 
+                background-color: #1E293B; 
+                color: #F8FAFC; 
+                border: 1px solid #334155; 
+                border-radius: 5px; 
+                font-size: 14px;
+                padding: 5px;
+            }
+            QListWidget::item:selected { 
+                background-color: #2563EB; 
+                color: #ffffff;
+                border-radius: 3px;
+            }
+            
+            QPlainTextEdit { 
+                background-color: #020617; 
+                color: #06B6D4; 
+                font-family: 'Consolas', 'Fira Code', 'Monospace'; 
+                border: 1px solid #1E293B; 
+                border-radius: 5px; 
+                padding: 10px;
+            }
+            
+            QPushButton { 
+                background-color: #2563EB; 
+                color: white; 
+                border: none; 
+                padding: 12px; 
+                border-radius: 5px; 
+                font-weight: bold; 
+                font-size: 14px;
+            }
+            QPushButton:hover { background-color: #3B82F6; }
+            QPushButton:pressed { background-color: #1D4ED8; }
+            QPushButton:disabled { background-color: #334155; color: #64748B; }
+            
+            QTabWidget::pane { 
+                border: 1px solid #1E293B; 
+                background-color: #0F172A; 
+                border-radius: 4px;
+            }
+            QTabBar::tab { 
+                background-color: #1E293B; 
+                color: #94A3B8; 
+                padding: 10px 20px; 
+                font-weight: bold; 
+                border-top-left-radius: 4px; 
+                border-top-right-radius: 4px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected { 
+                background-color: #0F172A; 
+                color: #60A5FA; 
+                border-bottom: 2px solid #3B82F6;
+            }
+            QTabBar::tab:hover:!selected {
+                background-color: #334155;
+            }
         """)
 
         self._setup_ui()
@@ -41,27 +105,27 @@ class MainWindow(QMainWindow):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         layout = QHBoxLayout(main_widget)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
         
         # -- Panel Izquierdo (Dispositivos Info y Logs) --
         left_panel = QVBoxLayout()
         
-        info_group = QGroupBox("Información del Dispositivo")
+        info_group = QGroupBox("Hardware Detectado")
         info_layout = QVBoxLayout()
         self.device_list = QListWidget()
         self.device_list.setMaximumHeight(150)
         info_layout.addWidget(self.device_list)
         
         self.lbl_status = QLabel("Estado: Esperando conexión USB...")
-        self.lbl_status.setStyleSheet("color: #d83b01; font-size: 14px;") # Naranja cuando espera
+        self.lbl_status.setStyleSheet("color: #F59E0B; font-size: 14px;") # Ámbar cuando espera
         info_layout.addWidget(self.lbl_status)
         
         info_group.setLayout(info_layout)
         left_panel.addWidget(info_group)
         
         # Consola de Logs
-        log_group = QGroupBox("Registro de Operaciones (Consola)")
+        log_group = QGroupBox("Terminal de Operaciones")
         log_layout = QVBoxLayout()
         self.console = QPlainTextEdit()
         self.console.setReadOnly(True)
@@ -77,16 +141,18 @@ class MainWindow(QMainWindow):
         
         # Tab Principal
         self.tab_actions = QWidget()
+        self.tab_actions.setStyleSheet("background-color: #0F172A;")
         self.tab_actions_layout = QVBoxLayout(self.tab_actions)
         
         self.lbl_actions = QLabel("Conecta un dispositivo para descubrir las acciones disponibles.")
         self.lbl_actions.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_actions.setStyleSheet("font-size: 16px; color: #666; margin: 20px;")
+        self.lbl_actions.setStyleSheet("font-size: 16px; color: #94A3B8; margin: 20px;")
         self.tab_actions_layout.addWidget(self.lbl_actions)
         
         # Grid para meter los botones dinámicamente
         self.dynamic_buttons_widget = QWidget()
         self.dynamic_buttons_layout = QGridLayout(self.dynamic_buttons_widget)
+        self.dynamic_buttons_layout.setSpacing(15)
         self.tab_actions_layout.addWidget(self.dynamic_buttons_widget)
         self.tab_actions_layout.addStretch()
         
@@ -107,7 +173,7 @@ class MainWindow(QMainWindow):
     def _on_device_added(self, devpath: str, plugin: BaseDevicePlugin):
         self.active_plugin = plugin
         self.lbl_status.setText(f"Estado: CONECTADO - {plugin.name}")
-        self.lbl_status.setStyleSheet("color: #107c10; font-size: 14px;") # Verde
+        self.lbl_status.setStyleSheet("color: #10B981; font-size: 14px;") # Emerald Green
         
         item_text = f"{plugin.name} [{devpath}]"
         self.device_list.addItem(item_text)
@@ -123,7 +189,7 @@ class MainWindow(QMainWindow):
             
         if self.device_list.count() == 0:
             self.lbl_status.setText("Estado: Esperando conexión USB...")
-            self.lbl_status.setStyleSheet("color: #d83b01; font-size: 14px;")
+            self.lbl_status.setStyleSheet("color: #F59E0B; font-size: 14px;")
             self.active_plugin = None
             self._clear_dynamic_buttons()
             
@@ -144,17 +210,15 @@ class MainWindow(QMainWindow):
         actions = plugin.get_supported_actions()
         row, col = 0, 0
         for action in actions:
-            # Formateamos ej: ENABLE_TEST_MODE_ADB -> Enable Test Mode Adb
             human_name = action.replace("_", " ").title()
             btn = QPushButton(human_name)
-            btn.setMinimumHeight(60) # Botones grandes y fáciles de clickear
+            btn.setMinimumHeight(60) 
             
-            # Usamos un closure (lambda con argumento default) para atar la acción al botón
             btn.clicked.connect(lambda checked=False, a=action: self._execute_plugin_action(a))
             
             self.dynamic_buttons_layout.addWidget(btn, row, col)
             col += 1
-            if col > 1: # Dos columnas de botones
+            if col > 1: # Dos columnas
                 col = 0
                 row += 1
 
@@ -162,10 +226,8 @@ class MainWindow(QMainWindow):
         if not self.active_plugin: return
         self.log(f"[*] Lanzando acción: {action_name}...")
         
-        # Como los plugins usan `async` y PySide6 se bloquea, lo mandamos a un hilo común de Python
         def run_async():
             try:
-                # Corremos el Event Loop aislado para esta acción
                 result = asyncio.run(self.active_plugin.execute_action(action_name))
                 if result.get("status") == "success":
                     self.bridge.log_message.emit(f"[ÉXITO] {result.get('message')}")
