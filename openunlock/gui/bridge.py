@@ -14,3 +14,6 @@ class DeviceEventBridge(QObject):
     
     # Emite: mensaje de texto
     log_message = Signal(str)
+    
+    # Emite: cuando una operación asíncrona de plugin termina o se aborta
+    operation_finished = Signal()

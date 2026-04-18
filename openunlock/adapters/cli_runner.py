@@ -28,6 +28,14 @@ class CLIRunner:
 
             await self.process.wait()
             self.returncode = self.process.returncode
+        except asyncio.CancelledError:
+            if self.process and self.process.returncode is None:
+                self.process.terminate()
+                try:
+                    await asyncio.wait_for(self.process.wait(), timeout=1.0)
+                except asyncio.TimeoutError:
+                    self.process.kill()
+            raise
         except Exception as e:
             self.returncode = -1
             yield f"Error crítico ejecutando comando: {str(e)}"

@@ -155,6 +155,18 @@ class MainWindow(QMainWindow):
         self.dynamic_buttons_layout = QGridLayout(self.dynamic_buttons_widget)
         self.dynamic_buttons_layout.setSpacing(15)
         self.tab_actions_layout.addWidget(self.dynamic_buttons_widget)
+        
+        # Botón de Abortar (oculto por defecto)
+        self.btn_abort = QPushButton("🛑 ABORTAR OPERACIÓN")
+        self.btn_abort.setStyleSheet("""
+            QPushButton { background-color: #DC2626; color: white; border: none; padding: 15px; font-size: 14px; font-weight: bold; border-radius: 5px; }
+            QPushButton:hover { background-color: #B91C1C; }
+            QPushButton:pressed { background-color: #991B1B; }
+        """)
+        self.btn_abort.hide()
+        self.btn_abort.clicked.connect(self._abort_operation)
+        self.tab_actions_layout.addWidget(self.btn_abort)
+        
         self.tab_actions_layout.addStretch()
         
         self.tabs.addTab(self.tab_actions, "Acciones Soportadas")
@@ -167,6 +179,7 @@ class MainWindow(QMainWindow):
         self.bridge.device_added.connect(self._on_device_added)
         self.bridge.device_removed.connect(self._on_device_removed)
         self.bridge.log_message.connect(self.log)
+        self.bridge.operation_finished.connect(self._on_operation_finished)
 
     def log(self, message: str):
         self.console.appendPlainText(f"> {message}")
@@ -198,7 +211,6 @@ class MainWindow(QMainWindow):
 
     def _clear_dynamic_buttons(self):
         self.lbl_actions.show()
-        # Elimina los botones viejos del grid
         for i in reversed(range(self.dynamic_buttons_layout.count())): 
             widget = self.dynamic_buttons_layout.itemAt(i).widget()
             if widget:
@@ -214,31 +226,62 @@ class MainWindow(QMainWindow):
             human_name = action.replace("_", " ").title()
             btn = QPushButton(human_name)
             btn.setMinimumHeight(60) 
-            
             btn.clicked.connect(lambda checked=False, a=action: self._execute_plugin_action(a))
             
             self.dynamic_buttons_layout.addWidget(btn, row, col)
             col += 1
-            if col > 1: # Dos columnas
+            if col > 1: 
                 col = 0
                 row += 1
+
+    def _on_operation_finished(self):
+        self.btn_abort.hide()
+        self.dynamic_buttons_widget.setEnabled(True)
+
+    def _abort_operation(self):
+        if hasattr(self, 'active_action_loop') and self.active_action_loop:
+            if hasattr(self, 'active_action_task') and self.active_action_task:
+                self.log("[!] Solicitando interrupción del proceso (SIGTERM)...")
+                self.btn_abort.setEnabled(False)
+                # Programar la cancelación de forma segura dentro del event loop
+                self.active_action_loop.call_soon_threadsafe(self.active_action_task.cancel)
 
     def _execute_plugin_action(self, action_name: str):
         if not self.active_plugin: return
         self.log(f"[*] Lanzando acción: {action_name}...")
         
+        self.dynamic_buttons_widget.setEnabled(False)
+        self.btn_abort.setEnabled(True)
+        self.btn_abort.show()
+        
         def run_async():
             self.running_tasks += 1
+            # Creamos un event loop propio para este hilo
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self.active_action_loop = loop
+            
             try:
-                result = asyncio.run(self.active_plugin.execute_action(action_name))
+                # Envolvemos la corrutina en una Task para poder cancelarla
+                task = loop.create_task(self.active_plugin.execute_action(action_name))
+                self.active_action_task = task
+                
+                result = loop.run_until_complete(task)
+                
                 if result.get("status") == "success":
                     self.bridge.log_message.emit(f"[ÉXITO] {result.get('message')}")
                 else:
                     self.bridge.log_message.emit(f"[ERROR] {result.get('message')}")
+            except asyncio.CancelledError:
+                self.bridge.log_message.emit("[ABORTADO] La operación fue cancelada por el usuario.")
             except Exception as e:
                 self.bridge.log_message.emit(f"[FALLA CRÍTICA] {str(e)}")
             finally:
+                self.active_action_task = None
+                self.active_action_loop = None
                 self.running_tasks -= 1
+                loop.close()
+                self.bridge.operation_finished.emit()
 
         threading.Thread(target=run_async, daemon=True).start()
 
