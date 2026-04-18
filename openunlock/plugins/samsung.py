@@ -23,11 +23,13 @@ class SamsungPlugin(BaseDevicePlugin):
         return [("04e8", "685d"), ("04e8", "6860")]
 
     def get_supported_actions(self) -> List[str]:
-        return ["ENABLE_TEST_MODE_ADB", "FRP_BYPASS"]
+        return ["READ_INFO_AT", "ENABLE_TEST_MODE_ADB", "FRP_BYPASS"]
 
     async def execute_action(self, action: str, **kwargs: Any) -> Dict[str, Any]:
         """Enruta la acción solicitada a la función correspondiente."""
-        if action == "ENABLE_TEST_MODE_ADB":
+        if action == "READ_INFO_AT":
+            return await self._read_info_at()
+        elif action == "ENABLE_TEST_MODE_ADB":
             return await self._enable_test_mode_adb()
         elif action == "FRP_BYPASS":
             return await self._frp_bypass()
@@ -78,6 +80,34 @@ class SamsungPlugin(BaseDevicePlugin):
         except Exception as e:
             # Capturamos SerialException traducido en RuntimeError por el adaptador
             return {"status": "error", "message": f"Falla crítica: {str(e)}"}
+
+    async def _read_info_at(self) -> Dict[str, Any]:
+        """Lee información básica del dispositivo usando comandos AT estándar."""
+        port = self.serial_adapter.find_samsung_modem_port()
+        if not port:
+            return {"status": "error", "message": "No se encontró el puerto serie de Samsung (/dev/ttyACM*)."}
+            
+        loop = asyncio.get_running_loop()
+        try:
+            # Pausa breve artificial para que el usuario pueda probar el botón "Abortar" en la GUI
+            self.serial_adapter.logger.info("Esperando estabilización del puerto...")
+            await asyncio.sleep(1.5)
+            
+            # AT+GMM pide el modelo del equipo
+            s1, raw_model = await loop.run_in_executor(None, self.serial_adapter.send_at_command, port, "AT+GMM")
+            # AT+GSN pide el IMEI del equipo
+            s2, raw_imei = await loop.run_in_executor(None, self.serial_adapter.send_at_command, port, "AT+GSN")
+            
+            # Limpiamos las respuestas (quitando los 'OK' y saltos de línea)
+            model = raw_model.replace("OK", "").strip() if s1 else "Desconocido"
+            imei = raw_imei.replace("OK", "").strip() if s2 else "Desconocido"
+            
+            if s1 or s2:
+                return {"status": "success", "message": f"INFO LEÍDA | Modelo: {model} | IMEI: {imei}"}
+            else:
+                return {"status": "error", "message": "El dispositivo no respondió a los comandos de lectura."}
+        except Exception as e:
+            return {"status": "error", "message": f"Falla crítica al leer info: {str(e)}"}
 
     async def _frp_bypass(self) -> Dict[str, Any]:
         return {"status": "error", "message": "FRP vía ADB requiere el CLIRunner. Todavía no implementado."}
