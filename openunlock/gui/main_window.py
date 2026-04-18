@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QListWidget, QPlainTextEdit, QLabel, QPushButton, 
-    QTabWidget, QGroupBox, QGridLayout
+    QTabWidget, QGroupBox, QGridLayout, QMessageBox
 )
 from PySide6.QtCore import Qt
 from openunlock.gui.bridge import DeviceEventBridge
@@ -16,6 +16,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("OpenUnlock-Linux (Dark Blue Edition)")
         self.resize(1100, 750)
         self.active_plugin = None
+        self.running_tasks = 0
         
         # Tema Oscuro Premium con tonalidades Azules (Midnight Blue)
         self.setStyleSheet("""
@@ -227,6 +228,7 @@ class MainWindow(QMainWindow):
         self.log(f"[*] Lanzando acción: {action_name}...")
         
         def run_async():
+            self.running_tasks += 1
             try:
                 result = asyncio.run(self.active_plugin.execute_action(action_name))
                 if result.get("status") == "success":
@@ -235,5 +237,24 @@ class MainWindow(QMainWindow):
                     self.bridge.log_message.emit(f"[ERROR] {result.get('message')}")
             except Exception as e:
                 self.bridge.log_message.emit(f"[FALLA CRÍTICA] {str(e)}")
+            finally:
+                self.running_tasks -= 1
 
         threading.Thread(target=run_async, daemon=True).start()
+
+    def closeEvent(self, event):
+        """Intercepta el cierre de la ventana para evitar corromper procesos."""
+        if self.running_tasks > 0:
+            reply = QMessageBox.warning(
+                self, '¡Advertencia de Seguridad!', 
+                "Hay acciones en ejecución en segundo plano (ej. ADB o Puerto Serie).\n\n"
+                "Si cerrás la aplicación ahora, podrías interrumpir un proceso de flasheo, "
+                "dejar el teléfono inestable, o dejar el puerto USB bloqueado en Linux.\n\n"
+                "¿Estás absolutamente seguro de forzar el cierre?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
+        event.accept()
