@@ -7,10 +7,11 @@ name = "openunlock-linux"
 version = "0.1.0"
 description = "Desktop application for mobile repair in Linux"
 authors = ["Community <community@example.com>"]
+packages = [{include = "openunlock"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-PySide6 = "^6.5.0"
+python = ">=3.10,<3.15"
+PySide6 = ">=6.11.0"
 pyudev = "^0.24.0"
 pyserial = "^3.5"
 
@@ -20,3 +21,11 @@ pytest-asyncio = "^0.23.0"
 pytest-qt = "^4.4.0"
 black = "^24.0.0"
 ruff = "^0.3.0"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:.*usb_descriptor_header.*:DeprecationWarning:usb.backend.libusb0",
+    "ignore:.*usb_string_descriptor.*:DeprecationWarning:usb.backend.libusb0",
+    "ignore:.*usb_device_descriptor.*:DeprecationWarning:usb.backend.libusb0",
+    "ignore::DeprecationWarning:usb.backend.*"
+]
