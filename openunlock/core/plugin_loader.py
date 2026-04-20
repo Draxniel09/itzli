@@ -36,12 +36,15 @@ class PluginManager:
         """Busca clases dentro de un módulo que implementen BaseDevicePlugin."""
         for _, item in inspect.getmembers(module):
             if inspect.isclass(item) and issubclass(item, BaseDevicePlugin) and item is not BaseDevicePlugin:
-                try:
-                    plugin_instance = item()
-                    self._plugins.append(plugin_instance)
-                except Exception:
-                    # Ignore instantiation errors for now (e.g. abstract methods not implemented)
-                    continue
+                if not inspect.isabstract(item):
+                    try:
+                        plugin_instance = item()
+                        # Avoid duplicates if a plugin is imported multiple times
+                        if not any(isinstance(p, item) for p in self._plugins):
+                            self._plugins.append(plugin_instance)
+                    except Exception:
+                        # Ignore instantiation errors for now (e.g. missing dependencies)
+                        continue
 
     def get_all_plugins(self) -> List[BaseDevicePlugin]:
         """Retorna todos los plugins cargados."""
