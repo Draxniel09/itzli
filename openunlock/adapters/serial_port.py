@@ -4,6 +4,81 @@ import time
 from typing import Optional, List, Tuple
 import logging
 
+class SerialSession:
+    """
+    Maneja la conexión activa al puerto serie durante una sesión, 
+    evitando abrir y cerrar el puerto por cada comando.
+    """
+    def __init__(self, port: str, timeout: float):
+        self.port = port
+        self.timeout = timeout
+        self.ser = None
+
+    def __enter__(self):
+        try:
+            self.ser = serial.Serial(self.port, baudrate=115200, timeout=self.timeout)
+            self.ser.reset_input_buffer()
+            self.ser.reset_output_buffer()
+            return self
+        except serial.SerialException as e:
+            raise RuntimeError(f"Error abriendo el puerto {self.port}: {e}")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.ser and self.ser.is_open:
+            self.ser.close()
+
+    def send_at_command(self, command: str, expected_responses: Optional[List[str]] = None) -> Tuple[bool, str]:
+        """
+        Envía un comando AT al puerto abierto, esperando la respuesta línea a línea
+        para evitar problemas de timming con sleep() estáticos.
+        Limpia buffers residuales antes de emitir un nuevo comando.
+        """
+        if expected_responses is None:
+            expected_responses = ['OK']
+            
+        try:
+            self.ser.reset_input_buffer()
+            self.ser.reset_output_buffer()
+            
+            # Limpiar cualquier basura residual (USB CDC in-flight packets)
+            self.ser.timeout = 0.05
+            while self.ser.read(1024):
+                pass
+            self.ser.timeout = self.timeout
+            
+            encoded_cmd = f"{command}\r\n".encode('ascii')
+            self.ser.write(encoded_cmd)
+            self.ser.flush()
+            
+            start_time = time.time()
+            response_lines = []
+            success = False
+            
+            while (time.time() - start_time) < self.timeout:
+                line = self.ser.readline().decode('ascii', errors='ignore').strip()
+                if line:
+                    # Ignorar el echo exacto del comando o ecos parciales del módem Samsung
+                    if command in line:
+                        continue
+                    
+                    if any(expected in line for expected in expected_responses):
+                        success = True
+                        break
+                    
+                    if "ERROR" in line:
+                        response_lines.append(line)
+                        break
+                        
+                    response_lines.append(line)
+            
+            # Crucial: Pequeño delay de 150ms para que el módem procese el comando previo
+            time.sleep(0.15)
+            
+            response_str = "\n".join(response_lines).strip()
+            return success, response_str
+        except serial.SerialException as e:
+            raise RuntimeError(f"Error de comunicación en puerto {self.port}: {e}")
+
 class SerialPortAdapter:
     """
     Adaptador para aislar la lógica de pyserial, cumpliendo con el
@@ -11,6 +86,7 @@ class SerialPortAdapter:
     """
     def __init__(self, timeout: float = 2.0):
         self.timeout = timeout
+        self.logger = logging.getLogger("SerialPortAdapter")
         
     def find_samsung_modem_port(self) -> Optional[str]:
         """Busca el puerto serie que corresponde a un módem Samsung."""
@@ -21,32 +97,6 @@ class SerialPortAdapter:
                 return port.device
         return None
 
-    def send_at_command(self, port: str, command: str, expected_responses: Optional[List[str]] = None) -> Tuple[bool, str]:
-        """
-        Envía un comando AT al puerto especificado y lee la respuesta.
-        Retorna una tupla (exito: bool, respuesta_cruda: str)
-        """
-        if expected_responses is None:
-            expected_responses = ['OK']
-            
-        try:
-            with serial.Serial(port, baudrate=115200, timeout=self.timeout) as ser:
-                ser.reset_input_buffer()
-                ser.reset_output_buffer()
-                
-                # Enviamos el comando con retorno de carro (CRLF)
-                encoded_cmd = f"{command}\r\n".encode('ascii')
-                ser.write(encoded_cmd)
-                
-                # Los módems celulares pueden ser lentos en responder
-                time.sleep(0.5)
-                
-                # Intentamos decodificar ignorando caracteres inválidos
-                response = ser.read_all().decode('ascii', errors='ignore')
-                
-                for expected in expected_responses:
-                    if expected in response:
-                        return True, response
-                return False, response
-        except serial.SerialException as e:
-            raise RuntimeError(f"Error de comunicación en puerto {port}. Posible puerto ocupado o desconectado: {e}")
+    def session(self, port: str) -> SerialSession:
+        """Retorna un context manager para mantener el puerto abierto durante una sesión de comandos."""
+        return SerialSession(port, self.timeout)
