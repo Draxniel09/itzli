@@ -17,3 +17,6 @@ class DeviceEventBridge(QObject):
     
     # Emite: cuando una operación asíncrona de plugin termina o se aborta
     operation_finished = Signal()
+
+    # Emite: action_name, title, file_filter
+    file_requested = Signal(str, str, str)

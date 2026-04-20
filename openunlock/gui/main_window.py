@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QListWidget, QPlainTextEdit, QLabel, QPushButton, 
-    QTabWidget, QGroupBox, QGridLayout, QMessageBox
+    QTabWidget, QGroupBox, QGridLayout, QMessageBox, QFileDialog
 )
 from PySide6.QtCore import Qt
 from openunlock.gui.bridge import DeviceEventBridge
@@ -138,6 +138,12 @@ class MainWindow(QMainWindow):
         
         # -- Área Principal (Tabs y Botones Mágicos) --
         right_panel = QVBoxLayout()
+        
+        self.lbl_actions = QLabel("Conecta un dispositivo para descubrir las acciones disponibles.")
+        self.lbl_actions.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_actions.setStyleSheet("font-size: 16px; color: #94A3B8; margin: 20px;")
+        right_panel.addWidget(self.lbl_actions)
+        
         self.tabs = QTabWidget()
         
         # Tab Principal
@@ -145,16 +151,31 @@ class MainWindow(QMainWindow):
         self.tab_actions.setStyleSheet("background-color: #0F172A;")
         self.tab_actions_layout = QVBoxLayout(self.tab_actions)
         
-        self.lbl_actions = QLabel("Conecta un dispositivo para descubrir las acciones disponibles.")
-        self.lbl_actions.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_actions.setStyleSheet("font-size: 16px; color: #94A3B8; margin: 20px;")
-        self.tab_actions_layout.addWidget(self.lbl_actions)
-        
-        # Grid para meter los botones dinámicamente
+        # Grid para meter los botones principales dinámicamente
         self.dynamic_buttons_widget = QWidget()
         self.dynamic_buttons_layout = QGridLayout(self.dynamic_buttons_widget)
         self.dynamic_buttons_layout.setSpacing(15)
         self.tab_actions_layout.addWidget(self.dynamic_buttons_widget)
+        self.tab_actions_layout.addStretch()
+        
+        self.tabs.addTab(self.tab_actions, "Acciones Principales")
+        
+        # Tab MTP / ADB Tools
+        self.tab_mtp_adb = QWidget()
+        self.tab_mtp_adb.setStyleSheet("background-color: #0F172A;")
+        self.tab_mtp_adb_layout = QVBoxLayout(self.tab_mtp_adb)
+        
+        # Grid para botones MTP y ADB
+        self.mtp_adb_buttons_widget = QWidget()
+        self.mtp_adb_buttons_layout = QGridLayout(self.mtp_adb_buttons_widget)
+        self.mtp_adb_buttons_layout.setSpacing(15)
+        self.tab_mtp_adb_layout.addWidget(self.mtp_adb_buttons_widget)
+        self.tab_mtp_adb_layout.addStretch()
+        
+        self.tabs.addTab(self.tab_mtp_adb, "MTP / ADB Tools")
+        
+        right_panel.addWidget(self.tabs)
+        self.tabs.hide() # Oculto hasta que se conecte el equipo
         
         # Botón de Abortar (oculto por defecto)
         self.btn_abort = QPushButton("🛑 ABORTAR OPERACIÓN")
@@ -165,14 +186,8 @@ class MainWindow(QMainWindow):
         """)
         self.btn_abort.hide()
         self.btn_abort.clicked.connect(self._abort_operation)
-        self.tab_actions_layout.addWidget(self.btn_abort)
+        right_panel.addWidget(self.btn_abort)
         
-        self.tab_actions_layout.addStretch()
-        
-        self.tabs.addTab(self.tab_actions, "Acciones Soportadas")
-        self.tabs.addTab(QWidget(), "MTP / ADB Tools") # Espacio para el futuro
-        
-        right_panel.addWidget(self.tabs)
         layout.addLayout(right_panel, 2) # Toma el 60% del ancho
 
     def _connect_signals(self):
@@ -180,6 +195,17 @@ class MainWindow(QMainWindow):
         self.bridge.device_removed.connect(self._on_device_removed)
         self.bridge.log_message.connect(self.log)
         self.bridge.operation_finished.connect(self._on_operation_finished)
+        self.bridge.file_requested.connect(self._on_file_requested)
+
+    def _on_file_requested(self, action_name: str, title: str, file_filter: str):
+        """Abre un diálogo de selección de archivos en el hilo de la GUI."""
+        file_path, _ = QFileDialog.getOpenFileName(self, title, "", file_filter)
+        if file_path:
+            self.log(f"[+] Archivo seleccionado: {file_path}")
+            self._execute_plugin_action(action_name, file_path=file_path)
+        else:
+            self.log("[!] Operación cancelada: No se seleccionó ningún archivo.")
+            self._on_operation_finished()
 
     def log(self, message: str):
         self.console.appendPlainText(f"> {message}")
@@ -211,32 +237,45 @@ class MainWindow(QMainWindow):
 
     def _clear_dynamic_buttons(self):
         self.lbl_actions.show()
-        for i in reversed(range(self.dynamic_buttons_layout.count())): 
-            widget = self.dynamic_buttons_layout.itemAt(i).widget()
-            if widget:
-                widget.deleteLater()
+        self.tabs.hide()
+        for layout in [self.dynamic_buttons_layout, self.mtp_adb_buttons_layout]:
+            for i in reversed(range(layout.count())): 
+                widget = layout.itemAt(i).widget()
+                if widget:
+                    widget.deleteLater()
 
     def _build_dynamic_buttons(self, plugin: BaseDevicePlugin):
         self._clear_dynamic_buttons()
         self.lbl_actions.hide()
+        self.tabs.show()
         
         actions = plugin.get_supported_actions()
-        row, col = 0, 0
+        row_main, col_main = 0, 0
+        row_mtp, col_mtp = 0, 0
+        
         for action in actions:
             human_name = action.replace("_", " ").title()
             btn = QPushButton(human_name)
             btn.setMinimumHeight(60) 
             btn.clicked.connect(lambda checked=False, a=action: self._execute_plugin_action(a))
             
-            self.dynamic_buttons_layout.addWidget(btn, row, col)
-            col += 1
-            if col > 1: 
-                col = 0
-                row += 1
+            if action.startswith("MTP_") or action.startswith("ADB_"):
+                self.mtp_adb_buttons_layout.addWidget(btn, row_mtp, col_mtp)
+                col_mtp += 1
+                if col_mtp > 1: 
+                    col_mtp = 0
+                    row_mtp += 1
+            else:
+                self.dynamic_buttons_layout.addWidget(btn, row_main, col_main)
+                col_main += 1
+                if col_main > 1: 
+                    col_main = 0
+                    row_main += 1
 
     def _on_operation_finished(self):
         self.btn_abort.hide()
         self.dynamic_buttons_widget.setEnabled(True)
+        self.mtp_adb_buttons_widget.setEnabled(True)
 
     def _abort_operation(self):
         if hasattr(self, 'active_action_loop') and self.active_action_loop:
@@ -246,11 +285,12 @@ class MainWindow(QMainWindow):
                 # Programar la cancelación de forma segura dentro del event loop
                 self.active_action_loop.call_soon_threadsafe(self.active_action_task.cancel)
 
-    def _execute_plugin_action(self, action_name: str):
+    def _execute_plugin_action(self, action_name: str, **kwargs):
         if not self.active_plugin: return
         self.log(f"[*] Lanzando acción: {action_name}...")
         
         self.dynamic_buttons_widget.setEnabled(False)
+        self.mtp_adb_buttons_widget.setEnabled(False)
         self.btn_abort.setEnabled(True)
         self.btn_abort.show()
         
@@ -263,12 +303,34 @@ class MainWindow(QMainWindow):
             
             try:
                 # Envolvemos la corrutina en una Task para poder cancelarla
-                task = loop.create_task(self.active_plugin.execute_action(action_name))
+                task = loop.create_task(self.active_plugin.execute_action(action_name, **kwargs))
                 self.active_action_task = task
                 
                 result = loop.run_until_complete(task)
                 
-                if result.get("status") == "success":
+                # Handle requests for file picking (returns back to GUI Thread via signal)
+                if result.get("status") == "request_file":
+                    self.bridge.file_requested.emit(
+                        action_name, 
+                        result.get("title", "Selecciona un archivo"), 
+                        result.get("filter", "*.*")
+                    )
+                    return # Exit this background thread, QFileDialog will restart the cycle
+
+                # Handle streams from CLIRunner (like ADB or Heimdall)
+                elif result.get("status") == "stream":
+                    generator = result.get("generator")
+                    self.bridge.log_message.emit(f"[*] {result.get('message')}")
+                    
+                    async def consume_stream():
+                        try:
+                            async for line in generator:
+                                self.bridge.log_message.emit(line.strip())
+                        except asyncio.CancelledError:
+                            self.bridge.log_message.emit("[ABORTADO] Stream interrumpido.")
+                            
+                    loop.run_until_complete(consume_stream())
+                elif result.get("status") == "success":
                     self.bridge.log_message.emit(f"[ÉXITO] {result.get('message')}")
                 else:
                     self.bridge.log_message.emit(f"[ERROR] {result.get('message')}")
