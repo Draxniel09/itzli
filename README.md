@@ -202,6 +202,18 @@ Looking to make your first contribution? Here are great starting points:
 
 ---
 
+## 🙏 Acknowledgements & Credits
+
+Itzli stands on the shoulders of giants in the open-source hardware, reverse-engineering, and mobile forensics communities:
+
+- **[Benjamin Dobell](https://github.com/Benjamin-Dobell) & Glass Echidna** — Creators of **[Heimdall](https://github.com/Benjamin-Dobell/Heimdall)**, the pioneering cross-platform suite for flashing firmware onto Samsung Galaxy devices via the Odin protocol without Windows.
+- **[Android Open Source Project (AOSP)](https://source.android.com/) & Google** — For the **Android Debug Bridge (ADB)** and core platform toolkits.
+- **The XDA Developers & SamFW Community** — For documenting Samsung AT modem commands, test mode interfaces (`*#0*#`), and hardware troubleshooting methodologies.
+- **[libusb](https://libusb.info/) & [pyusb](https://github.com/pyusb/pyusb)** — For providing low-level, cross-platform USB device communication interfaces.
+- **[The Qt Company](https://www.qt.io/) & PySide6** — For delivering a robust, performant C++ GUI framework with native Python bindings.
+
+---
+
 ## ⚖️ License
 
 Distributed under the **GNU General Public License v3.0 (GPLv3)**. See `LICENSE` for more information.

@@ -202,6 +202,18 @@ QT_QPA_PLATFORM=offscreen poetry run pytest -v
 
 ---
 
+## 🙏 Agradecimientos y Créditos
+
+Itzli se apoya en el trabajo fundamental de pioneros del software libre, la ingeniería inversa y la comunidad de reparación móvil:
+
+- **[Benjamin Dobell](https://github.com/Benjamin-Dobell) y Glass Echidna** — Creadores de **[Heimdall](https://github.com/Benjamin-Dobell/Heimdall)**, la suite abierta que hizo posible flashear dispositivos Samsung Galaxy en Linux y macOS mediante el protocolo Odin sin depender de Windows.
+- **[Android Open Source Project (AOSP)](https://source.android.com/) y Google** — Por el desarrollo de **ADB (Android Debug Bridge)** y las herramientas base de la plataforma Android.
+- **La comunidad de XDA Developers y SamFW** — Por documentar a lo largo de los años secuencias AT de diagnóstico, modos de servicio (`*#0*#`) y métodos de recuperación de hardware.
+- **[libusb](https://libusb.info/) y [pyusb](https://github.com/pyusb/pyusb)** — Por proveer librerías sólidas de acceso y manipulación de interfaces USB en Linux.
+- **[The Qt Company](https://www.qt.io/) y PySide6** — Por un framework gráfico moderno, reactivo y de alto rendimiento.
+
+---
+
 ## ⚖️ Licencia
 
 Distribuido bajo la licencia **GNU General Public License v3.0 (GPLv3)**. Consulta el archivo `LICENSE` para conocer todos los detalles.
