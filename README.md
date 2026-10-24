@@ -195,10 +195,10 @@ Looking to make your first contribution? Here are great starting points:
 
 ---
 
-## 👨‍💻 Author & Lead Maintainer
+## 👨‍💻 Project Lead & Creator
 
 **Daniel Mata Ruiz** ([@Draxniel09](https://github.com/Draxniel09))
-- System Architecture, Core Engine & Lead Maintainer
+- System Architecture, Core Engine & Project Lead
 
 ---
 
