@@ -1,12 +1,18 @@
+import os
 from typing import Callable, Dict, Optional, Any
-from openunlock.core.interfaces import BaseDevicePlugin
-from openunlock.core.plugin_loader import PluginManager
+from itzli.core.interfaces import BaseDevicePlugin
+from itzli.core.plugin_loader import PluginManager
 
 class DeviceManager:
+    """
+    Orquestador Central de Dispositivos:
+    Actúa como el cerebro que conecta los eventos de hardware (conexión/desconexión USB)
+    con los plugins disponibles en Itzli.
+    """
     def __init__(self, usb_monitor: Any, plugin_loader: PluginManager, on_device_change: Optional[Callable[[str, str, BaseDevicePlugin], None]] = None):
         """
-        Orquesta el monitor de eventos USB y el cargador de plugins.
-        :param usb_monitor: Instancia de USBMonitor.
+        Inicializa el orquestador.
+        :param usb_monitor: Instancia de USBMonitor (observa los puertos USB).
         :param plugin_loader: Instancia de PluginManager ya inicializada y descubierta.
         :param on_device_change: Callback opcional -> on_device_change(action, devpath, plugin_instance)
         """
@@ -37,6 +43,13 @@ class DeviceManager:
                 if self.on_device_change:
                     self.on_device_change('add', devpath, plugin)
         elif action == 'remove':
+            # 1. Coincidencia directa por devpath
             plugin = self.active_devices.pop(devpath, None)
             if plugin and self.on_device_change:
                 self.on_device_change('remove', devpath, plugin)
+            elif self.active_devices and self.on_device_change:
+                # 2. Resiliencia: verificar si los dispositivos registrados ya no existen físicamente en /dev
+                for p in list(self.active_devices.keys()):
+                    if not os.path.exists(p):
+                        plug = self.active_devices.pop(p)
+                        self.on_device_change('remove', p, plug)

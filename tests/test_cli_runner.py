@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from openunlock.adapters.cli_runner import CLIRunner
+from itzli.adapters.cli_runner import CLIRunner
 
 @pytest.mark.asyncio
 async def test_cli_runner_success():

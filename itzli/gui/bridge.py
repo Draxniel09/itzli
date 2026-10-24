@@ -20,3 +20,9 @@ class DeviceEventBridge(QObject):
 
     # Emite: action_name, title, file_filter
     file_requested = Signal(str, str, str)
+
+    # Emite: action_name, title
+    dir_requested = Signal(str, str)
+
+    # Emite: progreso actual (0-100)
+    progress_update = Signal(int)

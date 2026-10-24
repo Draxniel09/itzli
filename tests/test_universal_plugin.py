@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from openunlock.plugins.universal import UniversalPlugin
+from itzli.plugins.universal import UniversalPlugin
 
 @pytest.mark.asyncio
 async def test_deberia_ejecutar_adb_devices_correctamente_happy_path():

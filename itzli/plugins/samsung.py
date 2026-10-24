@@ -3,10 +3,10 @@ import time
 import re
 import functools
 from typing import List, Dict, Any, Tuple, Optional, Callable, AsyncGenerator
-from openunlock.core.interfaces import BaseDevicePlugin
-from openunlock.adapters.serial_port import SerialPortAdapter
-from openunlock.adapters.usb_injector import USBInjectorAdapter
-from openunlock.adapters.cli_runner import CLIRunner
+from itzli.core.interfaces import BaseDevicePlugin
+from itzli.adapters.serial_port import SerialPortAdapter
+from itzli.adapters.usb_injector import USBInjectorAdapter
+from itzli.adapters.cli_runner import CLIRunner
 
 def handle_usb_errors(func: Callable) -> Callable:
     """
@@ -299,23 +299,117 @@ class SamsungPlugin(BaseDevicePlugin):
         if not self.cli_runner.check_dependencies()["heimdall"]: 
             return {"status": "error", "message": "Falta Heimdall. Instálalo con: sudo dnf install heimdall"}
             
-        file_path = kwargs.get("file_path")
-        if not file_path:
-            return {
-                "status": "request_file",
-                "title": "Selecciona el firmware o imagen de recuperación",
-                "filter": "Imágenes Samsung (*.tar *.tar.md5 *.img);;Todos los archivos (*.*)"
-            }
+        firmware_dir = kwargs.get("firmware_dir")
+        if not firmware_dir:
+            return {"status": "request_dir", "title": "Selecciona la carpeta con el Firmware (Archivos AP, BL, CP, CSC en .tar.md5 o extraídos)"}
             
-        # Esto es un Proof-of-Concept: Heimdall requiere extraer el TAR y mapear el PIT.
-        # Simulamos un comando genérico de validación para el archivo seleccionado.
-        cmd = ["heimdall", "print-pit", "--no-reboot"]
-        
-        # En una versión completa, se parsearía el archivo. Aquí pasamos el output.
+        import os
+        import random
+        import tarfile
+        import tempfile
+        import shutil
+
+        async def flasher_real_process() -> AsyncGenerator[Tuple[str, int], None]:
+            yield ("[+] Iniciando proceso Real de Flasheo Heimdall...", 2)
+            
+            # 1. Identificar archivos provistos
+            files_in_dir = os.listdir(firmware_dir)
+            tar_files = [f for f in files_in_dir if f.upper().startswith(('AP_', 'BL_', 'CP_', 'CSC_')) and (f.endswith('.tar') or f.endswith('.md5'))]
+            
+            # Crear directorio temporal para extracción si hay archivos empaquetados
+            temp_dir = tempfile.mkdtemp(prefix="itzli_fw_")
+            try:
+                if tar_files:
+                    yield (f"[+] Detectados {len(tar_files)} archivos empaquetados. Extrayendo componentes...", 5)
+                    progress_step = 20 / len(tar_files)
+                    current_prog = 5
+                    
+                    for t_file in tar_files:
+                        yield (f"[i] Descomprimiendo: {t_file}", int(current_prog))
+                        tar_path = os.path.join(firmware_dir, t_file)
+                        
+                        # Ejecutar extracción bloqueante en un hilo de forma segura (previniendo Tar Slip)
+                        loop = asyncio.get_running_loop()
+                        def extract():
+                            with tarfile.open(tar_path, 'r') as tar:
+                                for member in tar.getmembers():
+                                    # Prevención de ataques de inyección de ruta (Tar/Zip Slip)
+                                    if member.name.startswith('/') or '..' in member.name:
+                                        continue
+                                    tar.extract(member, path=temp_dir, set_attrs=False)
+                        await loop.run_in_executor(None, extract)
+                        
+                        current_prog += progress_step
+                else:
+                    # Si ya venían extraídos, solo usamos la carpeta seleccionada
+                    yield ("[+] No se detectaron .tar.md5, asumiendo firmware ya extraído.", 20)
+                    temp_dir = firmware_dir
+
+                # 2. Mapear archivos extraídos a particiones de Heimdall
+                # Mapa de (archivo_esperado) -> (Particion_Heimdall)
+                partition_map = {
+                    "boot.img": "BOOT", "boot.img.lz4": "BOOT",
+                    "recovery.img": "RECOVERY", "recovery.img.lz4": "RECOVERY",
+                    "system.img": "SYSTEM", "system.img.ext4": "SYSTEM", "system.img.lz4": "SYSTEM",
+                    "vendor.img": "VENDOR", "vendor.img.ext4": "VENDOR", "vendor.img.lz4": "VENDOR",
+                    "modem.bin": "RADIO", "modem.bin.lz4": "RADIO",
+                    "cache.img": "CACHE", "cache.img.ext4": "CACHE", "cache.img.lz4": "CACHE",
+                    "userdata.img": "USERDATA", "userdata.img.ext4": "USERDATA", "userdata.img.lz4": "USERDATA",
+                    "sboot.bin": "BOOTLOADER", "sboot.bin.lz4": "BOOTLOADER",
+                    "param.bin": "PARAM", "param.bin.lz4": "PARAM",
+                    "cm.bin": "CM", "cm.bin.lz4": "CM"
+                }
+                
+                cmd_args = ["heimdall", "flash"]
+                files_to_flash = os.listdir(temp_dir)
+                found_partitions = 0
+                
+                yield ("[⚙️] Mapeando archivos a particiones Heimdall...", 25)
+                
+                for f in files_to_flash:
+                    for key, partition in partition_map.items():
+                        if f.lower() == key.lower():
+                            file_path = os.path.join(temp_dir, f)
+                            cmd_args.extend([f"--{partition}", file_path])
+                            found_partitions += 1
+                            yield (f"  -> Asignado {f} a --{partition}", 25 + found_partitions)
+                            break
+                            
+                if found_partitions == 0:
+                    raise RuntimeError("No se encontraron archivos .img o .bin válidos para flashear.")
+                    
+                # 3. Empujar comando Real a Heimdall
+                yield (f"\n[⚡] Iniciando comando Heimdall con {found_partitions} particiones...", 35)
+                
+                # Ejecuta heimdall (si no hay dispositivo colgará/fallará, pero es el comando real)
+                async for line in self.cli_runner.run_command(cmd_args):
+                    clean_line = line.strip()
+                    if not clean_line:
+                        continue
+                        
+                    # Parsear el progreso de Heimdall para la GUI (Ej: "Uploading BOOT... 100%")
+                    if "Uploading" in clean_line and "%" in clean_line:
+                        # Extraer un porcentaje visual un poco burdo y trasladarlo a 35-95%
+                        yield (clean_line, 65)
+                    else:
+                        yield (clean_line, 50)
+                        
+                yield ("\n[🎉 ÉXITO] ¡Flasheo Heimdall Completado Seguro y Satisfactoriamente!", 100)
+                
+            except Exception as e:
+                yield (f"\n[🚨 ERROR] Falló el proceso real: {str(e)}", -1)
+                yield ("[!] OPERACIÓN ABORTADA.", -1)
+                raise e
+            finally:
+                # Limpiar siempre el temporal
+                if temp_dir != firmware_dir and os.path.exists(temp_dir):
+                    yield ("[i] Limpiando archivos temporales de extracción...", -1) # No alterar barra
+                    shutil.rmtree(temp_dir)
+
         return {
-            "status": "stream", 
-            "message": f"Analizando {file_path} para flasheo con Heimdall...", 
-            "generator": self.cli_runner.run_command(cmd)
+            "status": "stream",
+            "message": "Iniciando proceso Real Heimdall Flasher",
+            "generator": flasher_real_process()
         }
 
     # ==========================================

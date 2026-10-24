@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from openunlock.plugins.samsung import SamsungPlugin
+from itzli.plugins.samsung import SamsungPlugin
 
 @pytest.mark.asyncio
 async def test_samsung_plugin_enable_test_mode_success():

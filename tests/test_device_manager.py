@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from openunlock.core.device_manager import DeviceManager
+from itzli.core.device_manager import DeviceManager
 
 def test_device_manager_add_supported_device():
     mock_monitor = MagicMock()

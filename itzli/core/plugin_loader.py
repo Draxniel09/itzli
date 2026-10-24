@@ -2,15 +2,26 @@ import importlib
 import pkgutil
 import inspect
 from typing import List, Optional
-from openunlock.core.interfaces import BaseDevicePlugin
+from itzli.core.interfaces import BaseDevicePlugin
 
 class PluginManager:
-    def __init__(self, plugin_package: str = "openunlock.plugins"):
+    """
+    Gestor de Plugins (Micro-kernel):
+    Se encarga de escanear dinámicamente un paquete (carpeta) en busca de archivos Python.
+    Si encuentra clases que heredan de `BaseDevicePlugin`, las carga y las registra en la aplicación
+    sin necesidad de modificar el código principal.
+    """
+    def __init__(self, plugin_package: str = "itzli.plugins"):
+        # Paquete base donde buscaremos los plugins
         self.plugin_package = plugin_package
+        # Lista interna para guardar las instancias de los plugins cargados
         self._plugins: List[BaseDevicePlugin] = []
 
     def discover_plugins(self) -> None:
-        """Descubre y carga automáticamente las clases que heredan de BaseDevicePlugin."""
+        """
+        Descubre y carga automáticamente las clases que heredan de BaseDevicePlugin.
+        Este método permite que Itzli sea extensible por la comunidad.
+        """
         self._plugins = []
         
         try:

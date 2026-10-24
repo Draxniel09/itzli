@@ -1,7 +1,7 @@
 import asyncio
 from typing import List, Dict, Any, Optional
-from openunlock.core.interfaces import BaseDevicePlugin
-from openunlock.adapters.cli_runner import CLIRunner
+from itzli.core.interfaces import BaseDevicePlugin
+from itzli.adapters.cli_runner import CLIRunner
 
 class UniversalPlugin(BaseDevicePlugin):
     """

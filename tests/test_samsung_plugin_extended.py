@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from openunlock.plugins.samsung import SamsungPlugin
+from itzli.plugins.samsung import SamsungPlugin
 
 @pytest.mark.asyncio
 async def test_deberia_leer_info_con_puerto_serie_alternativo_edge_case():

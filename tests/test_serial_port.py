@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from openunlock.adapters.serial_port import SerialPortAdapter
+from itzli.adapters.serial_port import SerialPortAdapter
 
 def test_find_samsung_modem():
     adapter = SerialPortAdapter()

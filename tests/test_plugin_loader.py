@@ -1,5 +1,5 @@
 import pytest
-from openunlock.core.plugin_loader import PluginManager
+from itzli.core.plugin_loader import PluginManager
 from tests.dummy_plugins.fake_samsung import FakeSamsungPlugin
 
 def test_plugin_discovery():

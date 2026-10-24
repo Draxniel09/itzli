@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
-from openunlock.adapters.cli_runner import CLIRunner
+from itzli.adapters.cli_runner import CLIRunner
 
 @pytest.mark.asyncio
 async def test_deberia_manejar_output_vacio_correctamente_edge_case():

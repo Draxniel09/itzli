@@ -19,11 +19,19 @@ class USBMonitor:
         action = device.action
         vid = device.get('ID_VENDOR_ID')
         pid = device.get('ID_MODEL_ID')
-        devpath = device.get('DEVNAME')
+        devpath = device.get('DEVNAME') or getattr(device, 'device_node', None)
         
-        # Solo notificamos si tenemos un VID y PID válido
-        if vid and pid and devpath:
-            self.callback(action, vid.lower(), pid.lower(), devpath)
+        if action == 'add':
+            # En add requerimos VID y PID para mapear al plugin correspondiente
+            if vid and pid and devpath:
+                self.callback('add', vid.lower(), pid.lower(), devpath)
+        elif action == 'remove':
+            # En remove, en Linux real el hardware ya no existe en sysfs y VID/PID son None.
+            # Notificamos con devpath para que DeviceManager desvincule el hardware.
+            vid_str = vid.lower() if vid else ''
+            pid_str = pid.lower() if pid else ''
+            if devpath:
+                self.callback('remove', vid_str, pid_str, devpath)
 
     def start(self) -> None:
         """Inicia el monitoreo en un hilo en segundo plano (nativamente provisto por pyudev)."""

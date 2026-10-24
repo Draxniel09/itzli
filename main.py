@@ -3,11 +3,11 @@ import faulthandler
 import queue
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer
-from openunlock.core.plugin_loader import PluginManager
-from openunlock.core.device_manager import DeviceManager
-from openunlock.adapters.udev_monitor import USBMonitor
-from openunlock.gui.bridge import DeviceEventBridge
-from openunlock.gui.main_window import MainWindow
+from itzli.core.plugin_loader import PluginManager
+from itzli.core.device_manager import DeviceManager
+from itzli.adapters.udev_monitor import USBMonitor
+from itzli.gui.bridge import DeviceEventBridge
+from itzli.gui.main_window import MainWindow
 
 # Habilitar diagnóstico de segfaults en stderr (si vuelve a pasar, veremos dónde)
 faulthandler.enable()
@@ -43,7 +43,7 @@ def main():
             
     # 3. Inicializar Infraestructura (Core y Adapters)
     usb_monitor = USBMonitor(callback=lambda a,v,p,d: None)
-    plugin_loader = PluginManager(plugin_package="openunlock.plugins")
+    plugin_loader = PluginManager(plugin_package="itzli.plugins")
     plugin_loader.discover_plugins()
     
     device_manager = DeviceManager(
@@ -56,7 +56,7 @@ def main():
     window = MainWindow(bridge)
     window.show()
     
-    bridge.log_message.emit("=== OpenUnlock-Linux Iniciado ===")
+    bridge.log_message.emit("=== Itzli Iniciado ===")
     bridge.log_message.emit(f"Plugins activos: {len(plugin_loader.get_all_plugins())}")
     bridge.log_message.emit("A la espera de dispositivos USB...")
     

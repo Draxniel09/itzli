@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, AsyncMock
-from openunlock.plugins.samsung import SamsungPlugin
+from itzli.plugins.samsung import SamsungPlugin
 
 @pytest.mark.asyncio
 async def test_fallback_devconinfo():

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from openunlock.adapters.udev_monitor import USBMonitor
+from itzli.adapters.udev_monitor import USBMonitor
 
 def test_usb_monitor_detects_add_event():
     # Setup mock device

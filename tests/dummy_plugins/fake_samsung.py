@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from openunlock.core.interfaces import BaseDevicePlugin
+from itzli.core.interfaces import BaseDevicePlugin
 
 class FakeSamsungPlugin(BaseDevicePlugin):
     @property
