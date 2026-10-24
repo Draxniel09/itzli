@@ -185,13 +185,13 @@ QT_QPA_PLATFORM=offscreen poetry run pytest -v
    QT_QPA_PLATFORM=offscreen poetry run pytest -v
    ```
 3. **Estándares de Código**:
-   - Respetá la separación de capas limpias (Adaptadores vs. Core vs. GUI).
+   - Respeta la separación de capas limpias (Adaptadores vs. Core vs. GUI).
    - Nunca bloquees el hilo principal de la GUI — todo I/O debe ser asíncrono o ejecutarse en segundo plano.
    - Todo nuevo código de hardware debe tener su respectivo test mockeado.
 4. **Convención de Commits**:
-   Utilizá el formato de **Conventional Commits** (ej. `feat(plugin): add motorola fastboot support` o `fix(udev): handle unplug edge case`).
+   Utiliza el formato de **Conventional Commits** (ej. `feat(plugin): add motorola fastboot support` o `fix(udev): handle unplug edge case`).
    > *Nota: Por favor, no agregues firmas ni atribución de autoría por IA ("Co-Authored-By") en los commits.*
-5. **Abrí tu Pull Request**: Describí claramente el cambio realizado, la justificación arquitectónica y cómo verificarlo.
+5. **Abre tu Pull Request**: Describe claramente el cambio realizado, la justificación arquitectónica y cómo verificarlo.
 
 ---
 
